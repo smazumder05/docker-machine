@@ -411,6 +411,16 @@ func (d *Driver) Kill() error {
 }
 
 func (d *Driver) Upgrade() error {
+	sshCmd, err := d.GetSSHCommand("sudo apt-get update && sudo apt-get install lxc-docker")
+	if err != nil {
+		return err
+	}
+	sshCmd.Stdin = os.Stdin
+	sshCmd.Stdout = os.Stdout
+	sshCmd.Stderr = os.Stderr
+	if err := sshCmd.Run(); err != nil {
+		return fmt.Errorf("%s", err)
+	}
 	return nil
 }
 
@@ -487,10 +497,34 @@ manage_etc_hosts: true
 fqdn: {{ .MachineName }}
 resize_rootfs: true
 
+apt_sources:
+  - source: "deb https://get.docker.com/ubuntu docker main"
+    filename: docker.list
+    key: |
+      -----BEGIN PGP PUBLIC KEY BLOCK-----
+      Version: GnuPG v1
+      
+      mQENBFIOqEUBCADsvqwefcPPQArws9jHF1PaqhXxkaXzeE5uHHtefdoRxQdjoGok
+      HFmHWtCd9zR7hDpHE7Q4dwJtSFWZAM3zaUtlvRAgvMmfLm08NW9QQn0CP5khjjF1
+      cgckhjmzQAzpEHO5jiSwl0ZU8ouJrLDgmbhT6knB1XW5/VmeECqKRyhlEK0zRz1a
+      XV+4EVDySlORmFyqlmdIUmiU1/6pKEXyRBBVCHNsbnpZOOzgNhfMz8VE8Hxq7Oh8
+      1qFaFXjNGCrNZ6xr/DI+iXlsZ8urlZjke5llm4874N8VPUeFQ/szmsbSqmCnbd15
+      LLtrpvpSMeyRG+LoTYvyTG9QtAuewL9EKJPfABEBAAG0OURvY2tlciBSZWxlYXNl
+      IFRvb2wgKHJlbGVhc2Vkb2NrZXIpIDxkb2NrZXJAZG90Y2xvdWQuY29tPokBOAQT
+      AQIAIgUCUg6oRQIbLwYLCQgHAwIGFQgCCQoLBBYCAwECHgECF4AACgkQ2Fdqi6iN
+      IenM+QgAnOiozhHDAYGO92SmZjib6PK/1djbrDRMreCT8bnzVpriTOlEtARDXsmX
+      njKSFa+HTxHi/aTNo29TmtHDfUupcfmaI2mXbZt1ixXLuwcMv9sJXKoeWwKZnN3i
+      9vAM9/yAJz3aq+sTXeG2dDrhZr34B3nPhecNkKQ4v6pnQy43Mr59Fvv5CzKFa9oZ
+      IoZf+Ul0F90HSw5WJ1NsDdHGrAaHLZfzqAVrqHzazw7ghe94k460T8ZAaovCaTQV
+      HzTcMfJdPz/uTim6J0OergT9njhtdg2ugUj7cPFUTpsxQ1i2S8qDEQPL7kabAZZo
+      Pim0BXdjsHVftivqZqfWeVFKMorchQ==
+      =fRgo
+      -----END PGP PUBLIC KEY BLOCK-----
+
 packages:
- - docker.io
+ - lxc-docker
 write_files:
- - path: /etc/default/docker.io
+ - path: /etc/default/docker
    owner: root:root
    permissions: '0644'
    content: |
@@ -501,10 +535,11 @@ write_files:
    permissions: '0644'
    content: |
      {{ .PublicKey }}
+# Current hack until identity auth is merged in docker
 runcmd:
- - stop docker.io
+ - stop docker
  - curl -sS https://bfirsh.s3.amazonaws.com/docker/docker-1.3.1-dev-identity-auth > /usr/bin/docker
- - start docker.io
+ - start docker
 `
 	var buffer bytes.Buffer
 
